@@ -424,19 +424,20 @@ def run_svnlook_command(command, rev_num, repo_path, file_path, filtering, debug
         command_list.extend(['-r', rev_num, command, repo_path, file_path])
         if debug:
             print command_list
-    with TemporaryFile() as stdout_temp_file, TemporaryFile() as stderr_temp_file:
-        process = subprocess.Popen(command_list, stdout = stdout_temp_file, stderr = stderr_temp_file)
-        exit_code = process.wait()
-        if exit_code:
-            stderr_temp_file.flush()
-            stderr_temp_file.seek(0)
-            error_msg = stderr_temp_file.read()
-            raise SVNLookError(error_msg)
-        else:
-            stdout_temp_file.flush()
-            stdout_temp_file.seek(0)
-            out = stdout_temp_file.read()
-            return out
+    with TemporaryFile() as stdout_temp_file:
+        with TemporaryFile() as stderr_temp_file:
+            process = subprocess.Popen(command_list, stdout = stdout_temp_file, stderr = stderr_temp_file)
+            exit_code = process.wait()
+            if exit_code:
+                stderr_temp_file.flush()
+                stderr_temp_file.seek(0)
+                error_msg = stderr_temp_file.read()
+                raise SVNLookError(error_msg)
+            else:
+                stdout_temp_file.flush()
+                stdout_temp_file.seek(0)
+                out = stdout_temp_file.read()
+                return out
 
 
 def handle_missing_file(d_file, from_path, destination, rev_num, repo_path, debug):
@@ -761,7 +762,7 @@ def parse_dump(input_dump, output_dump, matches, include, opt):
                                             # Recalculate Text and Prop content-length
                                             update_prop_len(node_seg)
                                     if NODE_COPYFROM_REV in node_seg.head:
-                                        if ((int(node_seg.head[NODE_COPYFROM_REV]) in empty_revs or int(node_seg.head[NODE_COPYFROM_REV]) < int(opt.start_revision)) or (
+                                        if ((int(node_seg.head[NODE_COPYFROM_REV]) in empty_revs or int(node_seg.head[NODE_COPYFROM_REV]) < int(opt.start_revision or 0)) or (
                                                 NODE_COPYFROM_REV in node_seg.head and not check.is_included(node_seg.head[NODE_COPYFROM_PATH]))):  # Check if in skipped revs:
                                             if TEXT_CONTENT_LEN in node_seg.head:
                                                 print '%s with %s, no untangling is neccecary' % (NODE_COPYFROM_REV, TEXT_CONTENT_LEN)
